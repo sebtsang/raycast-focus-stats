@@ -1,34 +1,22 @@
 import type { Session } from "./types";
 import { Action, ActionPanel, Color, Icon, List } from "@raycast/api";
 import { useSyncedSessions } from "./use-synced-sessions";
-import { formatTime } from "./utils";
 import { JSX, useState } from "react";
 import { DateDropdown } from "./components/date-dropdown";
-import { durationString, sessionString } from "./utils";
+import { displayDate, durationString, formatTime, sessionString, totalDuration } from "./utils";
 import { InitWrapper } from "./components/init/init-wrapper";
 
 export default function Command() {
-  const [date, setDate] = useState<Date>(new Date());
-  // When date changes, update the date on the component's state, causing a
-  // re-render and the recalculation of the `sessions` and `entries` variable.
-  const onDateChange = (date: Date) => setDate(date);
-
+  const [date, setDate] = useState<Date | null>(new Date());
   return (
     <InitWrapper
       children={(initialized) => {
-        const { isLoading, data: sessions = [], revalidate } = useSyncedSessions(date, initialized);
-        const summary = new Map<string, Session[]>();
-        for (const session of sessions) {
-          const group = summary.get(session.goal) ?? [];
-          group.push(session);
-          summary.set(session.goal, group);
-        }
-        const entries = [...summary.entries()].sort(([a], [b]) => a.localeCompare(b));
+        const { isLoading, data: sessions = [], revalidate } = useSyncedSessions(initialized);
 
         return (
           <List
             isLoading={!initialized || isLoading}
-            isShowingDetail
+            isShowingDetail={date !== null}
             actions={
               <ActionPanel>
                 <Action
@@ -40,20 +28,69 @@ export default function Command() {
                 />
               </ActionPanel>
             }
-            searchBarAccessory={<DateDropdown onDateChange={onDateChange} />}
+            searchBarAccessory={<DateDropdown onDateChange={setDate} />}
           >
             <List.EmptyView title="No Focus sessions" />
-            {sessions.length > 0 && <SummaryListItem title={"Summary"} sessions={sessions} displayGoal={true} />}
-
-            <List.Section title="Breakdown">
-              {entries.map(([goal, sessions]) => (
-                <SummaryListItem key={goal} title={goal} sessions={sessions} />
-              ))}
-            </List.Section>
+            {date === null ? <AllDates sessions={sessions} /> : <SingleDate date={date} sessions={sessions} />}
           </List>
         );
       }}
     />
+  );
+}
+
+/** Groups items by key, keeping the order in which keys and items first appear. */
+function groupBy<Item>(items: Item[], keyOf: (item: Item) => string): [string, Item[]][] {
+  const groups = new Map<string, Item[]>();
+  for (const item of items) {
+    const group = groups.get(keyOf(item)) ?? [];
+    group.push(item);
+    groups.set(keyOf(item), group);
+  }
+  return [...groups.entries()];
+}
+
+/** Lists every session, newest first, under a heading for each date. */
+function AllDates({ sessions }: { sessions: Session[] }): JSX.Element {
+  return (
+    <>
+      {groupBy(sessions, (session) => displayDate(session.start)).map(([date, sessions]) => (
+        <List.Section
+          key={date}
+          title={date}
+          subtitle={`${durationString(totalDuration(sessions))}, ${sessionString(sessions.length)}`}
+        >
+          {sessions.map((session) => (
+            <List.Item
+              key={session.id}
+              title={session.goal}
+              accessories={[
+                { tag: { value: durationString(session.duration), color: Color.Green } },
+                { text: formatTime(session.start) },
+              ]}
+            />
+          ))}
+        </List.Section>
+      ))}
+    </>
+  );
+}
+
+/** Summarizes one date's sessions, with a breakdown by goal. */
+function SingleDate({ date, sessions: allSessions }: { date: Date; sessions: Session[] }): JSX.Element {
+  const sessions = allSessions.filter((session) => session.start.toDateString() === date.toDateString()).reverse();
+  const entries = groupBy(sessions, (session) => session.goal).sort(([a], [b]) => a.localeCompare(b));
+
+  return (
+    <>
+      {sessions.length > 0 && <SummaryListItem title={"Summary"} sessions={sessions} displayGoal={true} />}
+
+      <List.Section title="Breakdown">
+        {entries.map(([goal, sessions]) => (
+          <SummaryListItem key={goal} title={goal} sessions={sessions} />
+        ))}
+      </List.Section>
+    </>
   );
 }
 
@@ -83,7 +120,6 @@ type SummaryListItemProps = {
  */
 function SummaryListItem(props: SummaryListItemProps): JSX.Element {
   const { title, sessions, displayGoal = false } = props;
-  const totalDuration = sessions.reduce((acc, session) => acc + (session.duration ?? 0), 0);
 
   const tagListTitle = (session: Session) => {
     return displayGoal ? `${session.goal}  ${formatTime(session.start)}` : formatTime(session.start);
@@ -98,7 +134,7 @@ function SummaryListItem(props: SummaryListItemProps): JSX.Element {
         <List.Item.Detail
           metadata={
             <List.Item.Detail.Metadata>
-              <List.Item.Detail.Metadata.Label title="Total" text={durationString(totalDuration)} />
+              <List.Item.Detail.Metadata.Label title="Total" text={durationString(totalDuration(sessions))} />
 
               <List.Item.Detail.Metadata.Label title="" />
 

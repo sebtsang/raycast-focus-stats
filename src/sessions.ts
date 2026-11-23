@@ -2,7 +2,7 @@ import { Cache } from "@raycast/api";
 import type { PendingSession, Session, NewSession } from "./types";
 import { getDatabase } from "./lib/db";
 import { sessionsTable } from "./lib/schema";
-import { and, eq, gte, isNull, lte } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lte } from "drizzle-orm";
 import { showToast, Toast } from "@raycast/api";
 
 const cache = new Cache();
@@ -92,32 +92,12 @@ export function saveSession(session: NewSession): boolean {
   return Number(result.changes) > 0;
 }
 
-/**
- * Retrieves all sessions for a specific date.
- *
- * @param {Date} date - The date for which to retrieve sessions
- * @returns {Session[]} An array of Session objects for the specified date
- */
-export function getSessionsByDate(date: Date): Session[] {
-  // Build the dates for the start and end of the user's day, so we can then access the timestamp
-  // date to build the file's names.
-  const startOfDay = new Date(date);
-  const endOfDay = new Date(date);
-  startOfDay.setHours(0, 0, 0, 0);
-  endOfDay.setHours(23, 59, 59, 999);
-
-  const database = getDatabase();
-  const rows = database
+/** Retrieves all sessions, newest first. */
+export function getSessions(): Session[] {
+  return getDatabase()
     .select()
     .from(sessionsTable)
-    .where(and(gte(sessionsTable.timestamp, startOfDay.getTime()), lte(sessionsTable.timestamp, endOfDay.getTime())))
-    .orderBy(sessionsTable.timestamp)
-    .all();
-
-  return rows.map((row: { id: number; goal: string; duration: number; timestamp: number }) => ({
-    id: row.id,
-    goal: row.goal,
-    duration: row.duration,
-    start: new Date(row.timestamp),
-  }));
+    .orderBy(desc(sessionsTable.timestamp))
+    .all()
+    .map((row) => ({ id: row.id, goal: row.goal, duration: row.duration, start: new Date(row.timestamp) }));
 }

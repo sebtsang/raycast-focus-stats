@@ -1,27 +1,20 @@
 import { List } from "@raycast/api";
 import { useMemo } from "react";
+import { displayDate } from "../utils";
 
-// Helper function to render the provided date in the `[MONTH] [DAY], [YEAR]`
-// format.
-function formatDate(date: Date): string {
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+const allDates = "all";
 
 /**
- * Custom List Dropdown Component that allows the user to select any date within the past 7 days.
+ * Custom List Dropdown Component that allows the user to select all dates, or any date within the past 7 days.
  * Initial value defaults to the current date.
  *
  * Note: The selected date value is not persisted between component renders.
  * The dropdown will always reset to the current date when the component is remounted.
  *
- * @param props.onDateChange - Callback function that is triggered when a date is selected.
- *                            It receives the newly selected Date object as a parameter.
+ * @param props.onDateChange - Callback function that is triggered when the selection changes. It receives the
+ *                            newly selected Date object, or null for all dates.
  */
-export function DateDropdown({ onDateChange }: { onDateChange: (newDate: Date) => void }) {
+export function DateDropdown({ onDateChange }: { onDateChange: (newDate: Date | null) => void }) {
   const dates = useMemo(() => {
     const today = new Date();
 
@@ -36,12 +29,13 @@ export function DateDropdown({ onDateChange }: { onDateChange: (newDate: Date) =
     ];
   }, []);
 
-  const onChange = (value: string) => onDateChange(new Date(value));
+  const onChange = (value: string) => onDateChange(value === allDates ? null : new Date(value));
 
   return (
-    <List.Dropdown tooltip="Select Date" onChange={onChange}>
+    <List.Dropdown tooltip="Select Date" defaultValue={dates[0].toISOString()} onChange={onChange}>
+      <List.Dropdown.Item title="All dates" value={allDates} />
       {dates.map((date) => (
-        <List.Dropdown.Item key={date.toISOString()} title={formatDate(date)} value={date.toISOString()} />
+        <List.Dropdown.Item key={date.toISOString()} title={displayDate(date)} value={date.toISOString()} />
       ))}
     </List.Dropdown>
   );

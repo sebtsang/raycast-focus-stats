@@ -1,3 +1,5 @@
+import type { Session } from "./types";
+
 /**
  * Formats a duration number into a human-readable string with proper pluralization
  *
@@ -10,6 +12,16 @@ export function durationString(duration: number): string {
 }
 
 /**
+ * Adds up the durations of the given sessions
+ *
+ * @param sessions - The sessions to total
+ * @returns The total duration in minutes
+ */
+export function totalDuration(sessions: Session[]): number {
+  return sessions.reduce((total, session) => total + session.duration, 0);
+}
+
+/**
  * Formats a session count into a human-readable string with proper pluralization
  *
  * @param length - The number of sessions
@@ -18,6 +30,16 @@ export function durationString(duration: number): string {
 export function sessionString(length: number): string {
   const suffix = length === 1 ? "session" : "sessions";
   return `${length} ${suffix}`;
+}
+
+/**
+ * Formats a Date object's date part for display
+ *
+ * @param date - The Date object to format
+ * @returns A string such as "Nov 23, 2026"
+ */
+export function displayDate(date: Date): string {
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 /**

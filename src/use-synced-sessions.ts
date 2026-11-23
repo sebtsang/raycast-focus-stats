@@ -1,19 +1,19 @@
 import { Toast, showToast } from "@raycast/api";
 import { usePromise } from "@raycast/utils";
-import { getSessionsByDate } from "./sessions";
+import { getSessions } from "./sessions";
 import { syncSessions } from "./sync";
 
-export function useSyncedSessions(date: Date, initialized: boolean) {
+export function useSyncedSessions(initialized: boolean) {
   return usePromise(
-    async (selectedDate: Date) => {
+    async () => {
       try {
         await syncSessions();
       } catch {
         await showToast({ style: Toast.Style.Failure, title: "Could not refresh Focus sessions" });
       }
-      return getSessionsByDate(selectedDate);
+      return getSessions();
     },
-    [date],
+    [],
     { execute: initialized },
   );
 }
