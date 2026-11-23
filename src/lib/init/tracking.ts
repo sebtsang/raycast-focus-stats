@@ -61,8 +61,8 @@ export function getInitializationReason(): string {
   const cachedMigration = cache.get(INIT_CACHE_KEY);
 
   if (!cachedMigration || !existsSync(DatabasePath)) {
-    return "Database not initialized. Run 'View Sessions' or 'View Summaries' first.";
+    return "Open View Focus Stats once to set up syncing";
   }
 
-  return "Database updates pending. Run 'View Sessions' or 'View Summaries' to update.";
+  return "Open View Focus Stats once to finish updating";
 }

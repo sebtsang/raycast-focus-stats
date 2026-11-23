@@ -15,12 +15,12 @@ This is a personal fork of [Raycast Focus Stats](https://www.raycast.com/dinocos
 On current versions of Raycast, the original extension stopped picking up completed Focus sessions, even after running
 its Sync Sessions command. Raycast still records each session in its app logs. This fork reads those logs instead.
 
-It also turns the three original commands into one:
+It also changes the three original commands:
 
 | Original                                        | This fork                                                        |
 | ----------------------------------------------- | ---------------------------------------------------------------- |
-| Sync Sessions, View Sessions, View Summaries    | View Focus Stats                                                 |
-| Sync runs as a separate command                 | Syncs every time you open the command, plus a Refresh action     |
+| Sync Sessions, View Sessions, View Summaries    | View Focus Stats, plus Sync Focus Sessions for the background    |
+| Sync runs as a separate command                 | Syncs when you open View Focus Stats, and in the background      |
 | Reads macOS system logs                         | Reads Raycast's app logs, and falls back to system logs if needed |
 
 ## Install
@@ -54,6 +54,9 @@ To uninstall, search for View Focus Stats in Raycast, open the action panel with
 2. Open **View Focus Stats**. It syncs new sessions, then shows today's total and each session.
 3. Use the date dropdown to look at other days. Use **Refresh** in the action panel to sync again while the view is open.
 
+To save sessions without opening View Focus Stats, open it once, then turn on **Background Refresh** for **Sync Focus
+Sessions** in Raycast's extension settings. It syncs every 10 minutes while Raycast is running.
+
 ## How it works
 
 Raycast doesn't give extensions access to Focus history. This extension reads the Focus start and completion events
@@ -67,8 +70,8 @@ ID for each session, so syncing again can't add a session twice or change its da
 Everything stays on your Mac. The extension makes no network requests.
 
 Raycast doesn't document these logs, so a Raycast update could change their format and break syncing. Raycast also
-deletes old log files. If you don't open the extension for a long time, it can miss sessions whose logs are already
-gone. Sessions already in the database stay there.
+deletes old log files. Without background sync, the extension can miss sessions whose log lines are already gone. A date
+can be wrong if Raycast logs nothing for about a day between a session and its first sync. Sessions already in the database stay there.
 
 ## Development
 

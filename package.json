@@ -19,6 +19,14 @@
       "subtitle": "Raycast Focus",
       "description": "Sync and view daily Focus totals, goals, and sessions.",
       "mode": "view"
+    },
+    {
+      "name": "sync-sessions",
+      "title": "Sync Focus Sessions",
+      "subtitle": "Raycast Focus",
+      "description": "Saves finished Focus sessions. Turn on Background Refresh for this command to save them every 10 minutes.",
+      "mode": "no-view",
+      "interval": "10m"
     }
   ],
   "dependencies": {

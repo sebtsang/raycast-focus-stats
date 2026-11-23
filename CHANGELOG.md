@@ -4,6 +4,7 @@
 
 - Fix sessions saved under an earlier date after Raycast trims a log that stays open for days.
 - Save Raycast's ID for each session so it can't be saved twice.
+- Add Sync Focus Sessions, which can save sessions in the background every 10 minutes.
 
 ## [Fork: sync from Raycast app logs] - 2026-11-19
 
