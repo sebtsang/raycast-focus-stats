@@ -78,7 +78,7 @@ function isMissing(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
 }
 
-/** Replay Raycast v2's retained logs. The start's timestamp provides a stable SQLite key on every replay. */
+/** Replay Raycast v2's retained logs. Raycast's session ID identifies a session on every replay. */
 export async function readAppLogSessions(
   directory = join(homedir(), "Library", "Logs", "com.raycast.macos"),
 ): Promise<{ recognized: boolean; sessions: NewSession[] }> {
@@ -124,6 +124,7 @@ export async function readAppLogSessions(
           case "completed":
             if (pending && record.id === pending.id && duration !== undefined) {
               sessions.push({
+                raycastId: pending.id,
                 start: pending.start,
                 goal: pending.goal,
                 duration: Math.floor(duration / 60),

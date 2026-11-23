@@ -2,7 +2,7 @@ import { Cache } from "@raycast/api";
 import type { PendingSession, Session, NewSession } from "./types";
 import { getDatabase } from "./lib/db";
 import { sessionsTable } from "./lib/schema";
-import { and, eq, gte, lte } from "drizzle-orm";
+import { and, eq, gte, isNull, lte } from "drizzle-orm";
 import { showToast, Toast } from "@raycast/api";
 
 const cache = new Cache();
@@ -50,28 +50,43 @@ export function removeCurrentSession() {
   cache.remove("currentSession");
 }
 
-/** Inserts a session. Older log sources can timestamp the same start slightly differently. */
-export function saveSession(session: NewSession, timestampTolerance = 0): boolean {
-  const timestamp = session.start.getTime();
+/** How far apart two log sources can timestamp the same start, in milliseconds. */
+const timestampTolerance = 1000;
+
+/** Inserts a session unless it is already saved. Returns whether a new session was saved. */
+export function saveSession(session: NewSession): boolean {
   const database = getDatabase();
-  if (timestampTolerance > 0) {
-    const existing = database
+  const timestamp = session.start.getTime();
+  const { raycastId } = session;
+
+  if (raycastId !== undefined) {
+    const saved = database
       .select({ id: sessionsTable.id })
       .from(sessionsTable)
+      .where(eq(sessionsTable.raycastId, raycastId))
+      .get();
+    // The first save happened closest to the session, so its date is the most reliable one.
+    if (saved) return false;
+
+    // Adopt a session saved before Raycast's ID was recorded, possibly from the system log.
+    const adopted = database
+      .update(sessionsTable)
+      .set({ raycastId })
       .where(
         and(
+          isNull(sessionsTable.raycastId),
           eq(sessionsTable.goal, session.goal),
           gte(sessionsTable.timestamp, timestamp - timestampTolerance),
           lte(sessionsTable.timestamp, timestamp + timestampTolerance),
         ),
       )
-      .get();
-    if (existing) return false;
+      .run();
+    if (Number(adopted.changes) > 0) return false;
   }
 
   const result = database
     .insert(sessionsTable)
-    .values({ goal: session.goal, duration: session.duration, timestamp })
+    .values({ goal: session.goal, duration: session.duration, timestamp, raycastId })
     .onConflictDoNothing()
     .run();
   return Number(result.changes) > 0;

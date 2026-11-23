@@ -51,7 +51,7 @@ test("pairs a real start and completion across midnight and log rotation", async
   );
   const expected = {
     recognized: true,
-    sessions: [{ goal: "Reading", duration: 44, start: new Date(2026, 10, 19, 23, 59, 0, 108) }],
+    sessions: [{ raycastId: "reading", goal: "Reading", duration: 44, start: new Date(2026, 10, 19, 23, 59, 0, 108) }],
   };
   assert.deepEqual(await readAppLogSessions(directory), expected);
   assert.deepEqual(await readAppLogSessions(directory), expected);
@@ -77,7 +77,7 @@ test("keeps a session that starts before midnight in a log still open after midn
     new Date(2026, 10, 20, 0, 2, 0, 200),
   );
   assert.deepEqual((await readAppLogSessions(directory)).sessions, [
-    { goal: "Focus session", duration: 2, start: new Date(2026, 10, 20, 0, 0, 0, 100) },
+    { raycastId: "midnight", goal: "Focus session", duration: 2, start: new Date(2026, 10, 20, 0, 0, 0, 100) },
   ]);
 });
 
@@ -100,7 +100,9 @@ test("dates sessions correctly after Raycast trims earlier days from the top of 
   const path = join(directory, "raycast-x-2026-11-19 13.58.33-0500.log");
   const today = session("today", "11:03:27.778", "11:33:27.880");
   const lastWritten = new Date(2026, 10, 23, 11, 39, 2, 657);
-  const expected = [{ goal: "Writing", duration: 30, start: new Date(2026, 10, 23, 11, 3, 27, 778) }];
+  const expected = [
+    { raycastId: "today", goal: "Writing", duration: 30, start: new Date(2026, 10, 23, 11, 3, 27, 778) },
+  ];
   // Two midnights are left in the log, then one, then none. The date must not move.
   for (const remaining of [
     "[info 19:12:07.935] a\n[info 23:52:29.000] b\n[info 00:05:32.000] c\n[info 23:40:22.000] d\n[info 00:05:59.000] e\n",
@@ -121,7 +123,7 @@ test("counts a midnight that passes while the log is quiet", async (t) => {
     new Date(2026, 10, 20, 9, 0, 0, 0),
   );
   assert.deepEqual((await readAppLogSessions(directory)).sessions, [
-    { goal: "Writing", duration: 30, start: new Date(2026, 10, 19, 17, 30, 0, 0) },
+    { raycastId: "evening", goal: "Writing", duration: 30, start: new Date(2026, 10, 19, 17, 30, 0, 0) },
   ]);
 });
 
@@ -134,7 +136,7 @@ test("does not count out-of-order lines or the end of daylight saving as a midni
     new Date(2026, 10, 1, 9, 0, 0, 0),
   );
   assert.deepEqual((await readAppLogSessions(directory)).sessions, [
-    { goal: "Writing", duration: 30, start: new Date(2026, 10, 1, 0, 40, 0, 0) },
+    { raycastId: "early", goal: "Writing", duration: 30, start: new Date(2026, 10, 1, 0, 40, 0, 0) },
   ]);
 });
 

@@ -13,7 +13,7 @@ test("upgrades stable Drizzle history without replaying migrations or losing ses
   const client = new DatabaseSync(join(directory, "sessions.db"));
   try {
     client.exec(readFileSync(new URL("./fixtures/drizzle-0.43.1.sql", import.meta.url), "utf8"));
-    const sessions = client.prepare("SELECT * FROM sessions ORDER BY id");
+    const sessions = client.prepare("SELECT id, goal, duration, timestamp FROM sessions ORDER BY id");
     const history = client.prepare("SELECT id, hash, created_at FROM __drizzle_migrations ORDER BY created_at");
     const originalSessions = sessions.all();
     const originalHistory = history.all();
@@ -23,18 +23,22 @@ test("upgrades stable Drizzle history without replaying migrations or losing ses
     for (let run = 0; run < 2; run++) {
       migrate(database, { migrationsFolder });
       assert.deepEqual(sessions.all(), originalSessions);
-      assert.deepEqual(history.all(), originalHistory);
+      assert.deepEqual(history.all().slice(0, originalHistory.length), originalHistory);
       assert.deepEqual(
         client
           .prepare("SELECT name FROM __drizzle_migrations ORDER BY created_at")
           .all()
           .map((row) => row.name),
-        ["20250517221250_outgoing_golden_guardian", "20250718131631_big_meteorite"],
+        [
+          "20250517221250_outgoing_golden_guardian",
+          "20250718131631_big_meteorite",
+          "20261123173853_raycast_session_id",
+        ],
       );
     }
 
     const indexes = client.prepare("PRAGMA index_list(sessions)").all();
-    for (const name of ["sessions_timestamp_unique", "sessions_goal_timestamp_unique"]) {
+    for (const name of ["sessions_timestamp_unique", "sessions_goal_timestamp_unique", "sessions_raycast_id_unique"]) {
       assert.equal(indexes.find((index) => index.name === name)?.unique, 1);
     }
     const insert = client.prepare("INSERT INTO sessions (goal, duration, timestamp) VALUES (?, ?, ?)");
@@ -42,6 +46,12 @@ test("upgrades stable Drizzle history without replaying migrations or losing ses
     insert.run("After upgrade", 10, 1793098800000);
     assert.deepEqual(sessions.all().slice(0, 3), originalSessions);
     assert.equal(sessions.all().length, 4);
+
+    const insertWithId = client.prepare(
+      "INSERT INTO sessions (goal, duration, timestamp, raycast_id) VALUES ('With ID', 10, ?, 'same-id')",
+    );
+    insertWithId.run(1793098900000);
+    assert.throws(() => insertWithId.run(1793098900001), /UNIQUE constraint failed/);
     assert.equal(client.prepare("PRAGMA integrity_check").get().integrity_check, "ok");
   } finally {
     client.close();

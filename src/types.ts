@@ -49,6 +49,11 @@ export type PendingSession = {
  */
 export type NewSession = {
   /**
+   * Raycast's own identifier for the session. Missing for sessions read from the macOS system log.
+   */
+  raycastId?: string;
+
+  /**
    * The specific aim or objective for this session.
    */
   goal: string;

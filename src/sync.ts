@@ -9,7 +9,7 @@ async function saveAvailableSessions(): Promise<number> {
   const appLog = await readAppLogSessions();
   if (appLog.recognized) {
     for (const session of appLog.sessions) {
-      if (saveSession(session, 1000)) saved++;
+      if (saveSession(session)) saved++;
     }
     return saved;
   }

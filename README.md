@@ -61,7 +61,8 @@ from Raycast's app logs in `~/Library/Logs/com.raycast.macos`, pairs them into s
 database in the extension's own support folder.
 
 The log lines have a time but no date, and Raycast trims old lines from a log that stays open for days. The extension
-counts midnights back from when the log was last modified, as Raycast's own log collector does.
+counts midnights back from when the log was last modified, as Raycast's own log collector does. It also saves Raycast's
+ID for each session, so syncing again can't add a session twice or change its date.
 
 Everything stays on your Mac. The extension makes no network requests.
 
