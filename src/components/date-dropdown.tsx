@@ -6,10 +6,10 @@ const allDates = "all";
 
 /**
  * Custom List Dropdown Component that allows the user to select all dates, or any date within the past 7 days.
- * Initial value defaults to the current date.
+ * Initial value defaults to all dates.
  *
  * Note: The selected date value is not persisted between component renders.
- * The dropdown will always reset to the current date when the component is remounted.
+ * The dropdown will always reset to all dates when the component is remounted.
  *
  * @param props.onDateChange - Callback function that is triggered when the selection changes. It receives the
  *                            newly selected Date object, or null for all dates.
@@ -32,7 +32,7 @@ export function DateDropdown({ onDateChange }: { onDateChange: (newDate: Date | 
   const onChange = (value: string) => onDateChange(value === allDates ? null : new Date(value));
 
   return (
-    <List.Dropdown tooltip="Select Date" defaultValue={dates[0].toISOString()} onChange={onChange}>
+    <List.Dropdown tooltip="Select Date" defaultValue={allDates} onChange={onChange}>
       <List.Dropdown.Item title="All dates" value={allDates} />
       {dates.map((date) => (
         <List.Dropdown.Item key={date.toISOString()} title={displayDate(date)} value={date.toISOString()} />

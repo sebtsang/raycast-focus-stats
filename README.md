@@ -51,8 +51,8 @@ To uninstall, search for View Focus Stats in Raycast, open the action panel with
 ## Use
 
 1. Run a Focus session in Raycast and complete it.
-2. Open **View Focus Stats**. It syncs new sessions, then shows today's total and each session.
-3. Use the date dropdown to look at other days, or choose **All dates** to list every session under its date. Use **Refresh** in the action panel to sync again while the view is open.
+2. Open **View Focus Stats**. It syncs new sessions, then lists every session under its date.
+3. Use the date dropdown to see one day's total and goals. Use **Refresh** in the action panel to sync again while the view is open.
 
 To save sessions without opening View Focus Stats, open it once, then turn on **Background Refresh** for **Sync Focus
 Sessions** in Raycast's extension settings. It syncs every 10 minutes while Raycast is running.

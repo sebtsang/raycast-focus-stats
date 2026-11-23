@@ -7,7 +7,7 @@ import { displayDate, durationString, formatTime, sessionString, totalDuration }
 import { InitWrapper } from "./components/init/init-wrapper";
 
 export default function Command() {
-  const [date, setDate] = useState<Date | null>(new Date());
+  const [date, setDate] = useState<Date | null>(null);
   return (
     <InitWrapper
       children={(initialized) => {
