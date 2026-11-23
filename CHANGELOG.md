@@ -1,5 +1,9 @@
 # Raycast Focus Stats Changelog
 
+## [Fork: correct dates, background sync and all dates] - 2026-11-23
+
+- Fix sessions saved under an earlier date after Raycast trims a log that stays open for days.
+
 ## [Fork: sync from Raycast app logs] - 2026-11-19
 
 - Read completed Focus sessions from Raycast's app logs, which current Raycast versions write instead of system logs.

@@ -60,6 +60,9 @@ Raycast doesn't give extensions access to Focus history. This extension reads th
 from Raycast's app logs in `~/Library/Logs/com.raycast.macos`, pairs them into sessions, and saves them in a SQLite
 database in the extension's own support folder.
 
+The log lines have a time but no date, and Raycast trims old lines from a log that stays open for days. The extension
+counts midnights back from when the log was last modified, as Raycast's own log collector does.
+
 Everything stays on your Mac. The extension makes no network requests.
 
 Raycast doesn't document these logs, so a Raycast update could change their format and break syncing. Raycast also

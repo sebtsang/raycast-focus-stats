@@ -1,13 +1,16 @@
-import { createReadStream } from "node:fs";
-import { readdir } from "node:fs/promises";
+import { open, readdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { createInterface } from "node:readline";
 import type { NewSession, PendingSession } from "./types";
 
 const logFilename = /^raycast-x-(\d{4}-\d{2}-\d{2}) (\d{2})\.(\d{2})\.(\d{2})([+-]\d{4})\.log$/;
-const recordHeader = /^\[\w+ (\d{2}:\d{2}:\d{2}\.\d{3})\] (.*)$/;
-const day = 24 * 60 * 60 * 1000;
+const recordHeader = /^\[\w+ (\d{2}):(\d{2}):(\d{2})\.(\d{3})\] (.*)$/;
+/** A clock that goes back further than this passed midnight. Smaller steps are out-of-order lines or daylight saving. */
+const hour = 60 * 60 * 1000;
+
+function clockTime(hours: number, minutes: number, seconds: number, milliseconds: number): number {
+  return ((hours * 60 + minutes) * 60 + seconds) * 1000 + milliseconds;
+}
 
 type FocusRecord = {
   type: "request" | "started" | "summary" | "completed" | "cancelled";
@@ -26,22 +29,28 @@ function recordType(message: string): FocusRecord["type"] | undefined {
   if (headline?.startsWith("Focus session cancelled {")) return "cancelled";
 }
 
-async function* readRecords(path: string, midnight: number, timeOfDay: string) {
-  const stream = createReadStream(path, { encoding: "utf8" });
-  const lines = createInterface({ input: stream, crlfDelay: Infinity });
-  let record: FocusRecord | undefined;
+/**
+ * Log lines carry a time but no date, and Raycast trims the oldest lines from logs that stay open for days. The only
+ * fixed point is the last line, which was logged when the file was last modified, so days are counted back from there.
+ * Raycast's own log collector dates these lines the same way.
+ */
+async function readRecords(path: string): Promise<FocusRecord[]> {
+  const file = await open(path);
   try {
-    for await (const line of lines) {
+    const found: { record: Omit<FocusRecord, "at">; clock: number; midnights: number }[] = [];
+    let record: Omit<FocusRecord, "at"> | undefined;
+    let previous: number | undefined;
+    let midnights = 0;
+    for await (const line of file.readLines({ encoding: "utf8", autoClose: false })) {
       const header = line.match(recordHeader);
       if (header) {
-        if (record) yield record;
-        const [, clock, message] = header;
-        if (Number(timeOfDay.slice(0, 2)) - Number(clock.slice(0, 2)) > 12) midnight += day;
-        timeOfDay = clock;
+        const [, hours, minutes, seconds, milliseconds, message] = header;
+        const clock = clockTime(Number(hours), Number(minutes), Number(seconds), Number(milliseconds));
+        if (previous !== undefined && previous > clock + hour) midnights++;
+        previous = clock;
         const type = recordType(message);
-        const [hours, minutes, seconds] = clock.split(":").map(Number);
-        const at = new Date(midnight + (hours * 3600 + minutes * 60 + seconds) * 1000);
-        record = type ? { type, at } : undefined;
+        record = type && { type };
+        if (record) found.push({ record, clock, midnights });
       } else if (record) {
         const title = line.match(/^\s+Title: *(.*)$/)?.[1];
         if (title !== undefined) record.goal = title.trim();
@@ -51,10 +60,17 @@ async function* readRecords(path: string, midnight: number, timeOfDay: string) {
         if (duration !== undefined) record.seconds = Number(duration);
       }
     }
-    if (record) yield record;
+
+    // Read after the lines, so a line written while reading can't be newer than the modified time.
+    const { mtime } = await file.stat();
+    const modifiedClock = clockTime(mtime.getHours(), mtime.getMinutes(), mtime.getSeconds(), mtime.getMilliseconds());
+    if (previous !== undefined && previous > modifiedClock + hour) midnights++;
+    return found.map(({ record, clock, midnights: passed }) => ({
+      ...record,
+      at: new Date(mtime.getFullYear(), mtime.getMonth(), mtime.getDate() - (midnights - passed), 0, 0, 0, clock),
+    }));
   } finally {
-    lines.close();
-    stream.destroy();
+    await file.close();
   }
 }
 
@@ -83,21 +99,13 @@ export async function readAppLogSessions(
     const match = name.match(logFilename);
     if (!match) return [];
     const [, date, hours, minutes, seconds, offset] = match;
-    const time = `${hours}:${minutes}:${seconds}`;
-    return [
-      {
-        name,
-        time,
-        midnight: Date.parse(`${date}T00:00:00${offset}`),
-        startedAt: Date.parse(`${date}T${time}${offset}`),
-      },
-    ];
+    return [{ name, startedAt: Date.parse(`${date}T${hours}:${minutes}:${seconds}${offset}`) }];
   });
   files.sort((first, second) => first.startedAt - second.startedAt);
 
   for (const file of files) {
     try {
-      for await (const record of readRecords(join(directory, file.name), file.midnight, file.time)) {
+      for (const record of await readRecords(join(directory, file.name))) {
         recognized = true;
         switch (record.type) {
           case "request":
@@ -115,7 +123,11 @@ export async function readAppLogSessions(
             break;
           case "completed":
             if (pending && record.id === pending.id && duration !== undefined) {
-              sessions.push({ start: pending.start, goal: pending.goal, duration: Math.floor(duration / 60) });
+              sessions.push({
+                start: pending.start,
+                goal: pending.goal,
+                duration: Math.floor(duration / 60),
+              });
             }
             pending = undefined;
             duration = undefined;
